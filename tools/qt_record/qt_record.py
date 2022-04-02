@@ -15,6 +15,6 @@
 # limitations under the License.
 
 
-class Waymo:
+class QtRecord:
   def __init__(self) -> None:
     pass
