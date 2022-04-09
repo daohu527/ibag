@@ -15,14 +15,9 @@
 # limitations under the License.
 
 
-def convert(py_object, pb_object):
-  for attr in dir(py_object):
-    if pb_object.HasField(attr):
-      val = getattr(py_object, attr)
-      setattr(pb_object, attr, val)
+from common.convert import convert
 
 
 class RosbagToRecord:
   def __init__(self) -> None:
     pass
-
