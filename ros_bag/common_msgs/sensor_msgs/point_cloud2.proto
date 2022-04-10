@@ -1,0 +1,28 @@
+syntax = "proto2";
+
+package sensor_msgs.point_cloud2;
+
+import "std_msgs/header.proto";
+import "common_msgs/sensor_msgs/point_field.proto";
+
+
+message PointCloud2 {
+  // Time of sensor data acquisition, and the coordinate frame ID (for 3d
+  // points).
+  optional Header header = 1;
+
+  // 2D structure of the point cloud. If the cloud is unordered, height is
+  // 1 and width is the length of the point cloud.
+  optional uint32 height = 2;
+  optional uint32 width = 3;
+
+  // Describes the channels and their layout in the binary data blob.
+  repeated PointField fields = 4;
+
+  optional bool    is_bigendian = 5; // Is this data bigendian?
+  optional uint32  point_step = 6;   // Length of a point in bytes
+  optional uint32  row_step = 7;     // Length of a row in bytes
+  repeated uint8 data = 8;    // Actual point data, size is (row_step*height)
+
+  optional bool is_dense = 9;        // True if there are no invalid points
+}

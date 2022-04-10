@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package std_msgs.time;
+
+
+message Time {
+  optional int32 secs = 1;
+  optional int32 nsecs = 2;
+}
