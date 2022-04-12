@@ -15,12 +15,53 @@
 # limitations under the License.
 
 
-class Record:
+from enum import Enum
+import struct
+import io
+import os.path
+
+
+from cyber_record.reader import Reader
+
+
+DEFAULT_CHUNK_SIZE = 200 * 1024 * 1024
+MIN_CHUNK_SIZE = 512
+
+class Compression(Enum):
+  NONE = 'none'
+  BZ2  = 'bz2'
+  LZ4 = 'lz4'
+
+
+class Record(object):
   '''
   The record file
   '''
-  def __init__(self, file_name, mode='r'):
-    pass
+  def __init__(self, f, mode='r', compression=Compression.NONE, \
+      chunk_threshold=DEFAULT_CHUNK_SIZE, options=None):
+    # options
+    if options is not None:
+      if not isinstance(options, dict):
+        raise ValueError('options must be of type dict')
+      if 'compression' in options:
+        compression = options['compression']
+      if 'chunk_threshold' in options:
+        chunk_threshold = options['chunk_threshold']
+
+    self._file = None
+    self._filename = None
+    self._version = None
+
+    self._compression = compression
+
+    assert chunk_threshold >= MIN_CHUNK_SIZE, \
+        "chunk_threshold should large than {}".format(MIN_CHUNK_SIZE)
+    self._chunk_threshold = chunk_threshold
+
+    self._reader = None
+
+    self._open(f, mode)
+
 
   def __iter__(self):
     return self.read_messages()
@@ -58,7 +99,10 @@ class Record:
     pass
 
   def read_messages(self, topics=None, duration=None):
-    pass
+    if topics and isinstance(topics, str):
+      topics = [topics]
+
+    return self._reader.read_messages(topics, duration)
 
   def flush(self):
     pass
@@ -96,9 +140,96 @@ class Record:
     pass
 
   def _open(self, f, mode, allow_unindexed):
-    pass
+    assert f is not None, "filename (or stream) is invalid"
+
+    self._mode = mode
+
+    try:
+      if mode == 'r': self._open_read(f)
+      elif mode == 'w': self._open_write(f)
+      elif mode == 'a': self._open_append(f)
+      else:
+        raise ValueError('mode {} is invalid'.format(mode))
+    except struct.error:
+      raise Exception()
+
+  def _is_file(self, f):
+    return isinstance(f, io.IOBase)
+
+  def _open_read(self, f):
+    if self._is_file(f):
+      self._file = f
+      self._filename = None
+    else:
+      self._file = open(f, 'rb')
+      self._filename = f
+
+    try:
+      self._create_reader()
+      self._reader.start_reading()
+    except:
+      self._close_file()
+      raise
+
+  def _open_write(self, f):
+    if self._is_file(f):
+      self._file = f
+      self._filename = None
+    else:
+      self._file = open(f, 'w+b')
+      self._filename = f
+
+    try:
+      self._create_reader()
+      self._start_writing()
+    except:
+      self._close_file()
+      raise
+
+  def _open_append(self, f):
+    if self._is_file(f):
+      self._file = f
+      self._filename = None
+    else:
+      self._filename = f
+      # if file exists
+      if os.path.isfile(f):
+        self._file = open(f, 'r+b')
+      else:
+        self._file = open(f, 'w+b')
+
+    try:
+      self._start_appending()
+    except:
+      self._close_file()
+      raise
 
   def _close_file(self):
+    self._file.close()
+    self._file = None
+
+  def _create_reader(self):
+    self._reader = Reader(self)
+
+  def _start_writing(self):
+    self._write_file_header_record(0, 0, 0)
+
+  def _start_appending(self):
+    pass
+
+  def _stop_writing(self):
+    pass
+
+  def _start_writing_chunk(self):
+    pass
+
+  def _get_chunk_offset(self):
+    pass
+
+  def _stop_writing_chunk(self):
+    pass
+
+  def _set_compression_mode(self, compression):
     pass
 
   def _write_file_header_record(self):
@@ -118,3 +249,8 @@ class Record:
 
   def _write_chunk_info_record(self):
     pass
+
+
+if __name__ == '__main__':
+  file_name = ''
+  Record(file_name)
