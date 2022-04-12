@@ -22,9 +22,12 @@ from cyber.proto import record_pb2
 
 
 class Section:
-  def __init__(self, section_type=None, data_size=None) -> None:
+  def __init__(self, section_type=None, data_size=0) -> None:
     self.type = section_type
     self.size = data_size
+
+  def __str__(self):
+    return "Section type: {}, size: {}".format(self.type, self.size)
 
 
 class Reader:
@@ -33,7 +36,7 @@ class Reader:
 
   def start_reading(self):
     header = self.read_file_header_record()
-
+    print(header)
 
   def reindex(self):
     pass
@@ -42,31 +45,29 @@ class Reader:
     pass
 
   def _read_section(self, section):
-    section.type = self.bag._file.read(4)
-    section.size = self.bag._file.read(8)
-
-  def _read_message(self, proto_message):
-    section = Section()
-    self._read_section(section)
-
-    if section.type != type(proto_message):
-      return False
-
-    data = self.bag._file.read(section.size)
-    proto_message.ParseFromString(data)
-    return True
+    section.type = int.from_bytes(self.bag._file.read(4), byteorder='little')
+    self.bag._file.seek(4, 1)
+    section.size = int.from_bytes(self.bag._file.read(8), byteorder='little')
 
   def read_file_header_record(self):
     self.bag._file_header_pos = self.bag._file.seek(0, 0)
 
-    proto_header = record_pb2.Header()
+    section = Section()
+    self._read_section(section)
 
-    r = self._read_message(proto_header)
+    print(section)
 
-    if r:
-      return proto_header
-    else:
+    if section.type != record_pb2.SECTION_HEADER:
       return None
+
+    proto_header = record_pb2.Header()
+    data = self.bag._file.read(section.size)
+    if len(data) != section.size:
+      print("Header is incomplete, actual required size is {}".format(section.size))
+      return None
+
+    proto_header.ParseFromString(data)
+    return proto_header
 
   def read_connection_record(self):
     pass

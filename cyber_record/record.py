@@ -21,7 +21,7 @@ import io
 import os.path
 
 
-from cyber_record.reader import Reader
+from reader import Reader
 
 
 DEFAULT_CHUNK_SIZE = 200 * 1024 * 1024
@@ -38,7 +38,8 @@ class Record(object):
   The record file
   '''
   def __init__(self, f, mode='r', compression=Compression.NONE, \
-      chunk_threshold=DEFAULT_CHUNK_SIZE, options=None):
+      chunk_threshold=DEFAULT_CHUNK_SIZE, allow_unindexed=False, \
+      options=None):
     # options
     if options is not None:
       if not isinstance(options, dict):
@@ -60,7 +61,7 @@ class Record(object):
 
     self._reader = None
 
-    self._open(f, mode)
+    self._open(f, mode, allow_unindexed)
 
 
   def __iter__(self):
@@ -252,5 +253,5 @@ class Record(object):
 
 
 if __name__ == '__main__':
-  file_name = ''
+  file_name = "20210521122747.record.00000"
   Record(file_name)
