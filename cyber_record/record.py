@@ -52,6 +52,7 @@ class Record(object):
     self._file = None
     self._filename = None
     self._version = None
+    self._size = 0
 
     self._compression = compression
 
