@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-from google.protobuf import message_factory, descriptor_pb2
+from google.protobuf import message_factory, descriptor_pb2, descriptor_pool
 from cyber.proto import record_pb2, proto_desc_pb2
 
 
@@ -39,6 +39,9 @@ class Reader:
     self.chunk_header_indexs = []
     self.chunk_body_indexs = []
     self.channels = {}
+    self.desc_pool = descriptor_pool.DescriptorPool()
+
+    self.message_type_pool = {}
 
 
   def start_reading(self):
@@ -59,6 +62,8 @@ class Reader:
         print("Unknown Index type!")
 
     print(indexs)
+
+    self._create_message_type_pool()
 
     self.read_records()
 
@@ -160,22 +165,40 @@ class Reader:
         for message in proto_chunk_body.messages:
           self.create_message(message)
           # Todo(zero): need to delete
-          break
+          # break
       else:
         pass
 
+  def add_dependency(self, proto_desc):
+    if proto_desc is None:
+      return
+
+    file_desc_proto = descriptor_pb2.FileDescriptorProto()
+    file_desc_proto.ParseFromString(proto_desc.desc)
+    self.desc_pool.Add(file_desc_proto)
+    for dependency in proto_desc.dependencies:
+      self.add_dependency(dependency)
+
+
+  def _create_message_type_pool(self):
+    for channel_name, channel_cache in self.channels.items():
+      proto_desc = proto_desc_pb2.ProtoDesc()
+      proto_desc.ParseFromString(channel_cache.proto_desc)
+      self.add_dependency(proto_desc)
+
+      descriptor = self.desc_pool.FindMessageTypeByName(channel_cache.message_type)
+      message_type = message_factory.MessageFactory().GetPrototype(descriptor)
+      self.message_type_pool.update({channel_name: message_type})
+
+
   def create_message(self, single_message):
-    channel_cache = self.channels[single_message.channel_name]
+    message_type = self.message_type_pool.get(single_message.channel_name, None)
+    print(message_type)
 
-    proto_desc = proto_desc_pb2.ProtoDesc()
-    proto_desc.ParseFromString(channel_cache.proto_desc)
-    # print(proto_desc)
+    if message_type is None:
+      return None
+    proto_message = message_type()
+    proto_message.ParseFromString(single_message.content)
 
-    file_proto = descriptor_pb2.FileDescriptorProto()
-    file_proto.ParseFromString(proto_desc.desc)
-
-    proto_type = message_factory.MessageFactory().GetPrototype(file_proto.DESCRIPTOR)
-    proto_message = proto_type()
-    print(type(proto_message))
-    # proto_message.ParseFromString(single_message.content)
-
+    print(proto_message)
+    return proto_message
